@@ -1,14 +1,14 @@
-# 🧵 WeaveLab
+# WeaveLab
 
 **Turn any image into a string art blueprint you can physically build.**
 
 WeaveLab is a web app that takes a photo or image, runs it through an optimization algorithm, and generates a step-by-step guide for winding thread around a nail frame to recreate that image as string art.
 
-Upload an image → configure your frame → hit generate → get a numbered sequence you can actually follow by hand.
+Upload an image -> configure your frame -> hit generate -> get a numbered sequence you can actually follow by hand.
 
 ---
 
-## ✨ What It Does
+## Features
 
 - **Upload any image** — JPG or PNG, with live preprocessing preview
 - **Choose your frame shape** — circle, square, rectangle, polygon, or heart
@@ -21,7 +21,7 @@ Upload an image → configure your frame → hit generate → get a numbered seq
 
 ---
 
-## 🖼️ Supported Frame Shapes
+## Supported Frame Shapes
 
 | Shape | Description |
 |-------|-------------|
@@ -33,7 +33,7 @@ Upload an image → configure your frame → hit generate → get a numbered seq
 
 ---
 
-## 🛠️ Built With
+## Built With
 
 **Frontend**
 - React + TypeScript
@@ -50,18 +50,28 @@ Upload an image → configure your frame → hit generate → get a numbered seq
 
 ---
 
-## 🚧 Project Status
+## Roadmap
 
-Currently in development. Building out the core algorithm and API first, then the frontend.
+The following features are prioritized for upcoming releases to enhance the precision of the algorithm and the physical assembly experience.
 
-Planned features not yet built:
-- Multi-color thread support
-- Custom frame shape upload
-- Mobile-responsive layout
+### Phase 1: Technical Enhancements
+- **Advanced Material Simulation**: Implementation of variable thread tension and physical thickness modeling to provide a more accurate digital-to-physical preview.
+- **Subtractive Color Mixing**: Refined CMYK blending heuristics to better handle light scattering at thread intersections and transparency.
+- **Spatial Optimization**: Implementation of non-greedy search patterns to resolve local minima in high-contrast regions of the input image.
+
+### Phase 2: Experience and Accessibility
+- **Guided Assembly Interface**: A mobile-optimized interface providing real-time navigation and audio cues to assist users during the physical winding process.
+- **Cloud State Persistence**: Integration for cross-device project syncing, allowing users to pause physical builds and resume from any device.
+- **Material Estimator**: Automated calculation of total thread length required per color based on frame dimensions and design density.
+
+### Phase 3: Hardware and Ecosystem
+- **G-code Export**: Direct export of nail sequences for compatibility with automated CNC string art machines and plotters.
+- **Vector Support**: Ability to upload SVG paths to define custom frame geometries and arbitrary nail distributions.
+- **Project Gallery**: A platform for users to document and share their finished physical pieces and custom frame designs.
 
 ---
 
-## 💡 How The Algorithm Works
+## How The Algorithm Works
 
 The core idea is a **greedy optimization loop**:
 
@@ -74,7 +84,7 @@ It's not magic — it's just thousands of tiny decisions, each one making the im
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 weavelab/
@@ -90,6 +100,7 @@ weavelab/
 
 ---
 
-## 🙏 Credits
+## Credits
 
 Algorithm originally developed by [Michael Crum](https://michael-crum.com/string_art_generator/). This project ports and extends that work into a full-stack web application.
+
