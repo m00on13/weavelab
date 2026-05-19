@@ -9,8 +9,10 @@ per-pixel Python overhead.
 from __future__ import annotations
 
 import numpy as np
+from numba import njit
 
 
+@njit
 def bresenham_line(x0: int, y0: int, x1: int, y1: int) -> np.ndarray:
     """
     Compute all pixel coordinates along the line from (x0, y0) to (x1, y1)

@@ -9,8 +9,73 @@ previously-used connections to avoid duplicates.
 from __future__ import annotations
 
 import numpy as np
+from numba import njit
 
 from .rasterize import bresenham_line
+
+@njit(fastmath=True)
+def _compute_line_diff_jit(
+    pixels: np.ndarray,
+    current_buffer: np.ndarray,
+    target_buffer: np.ndarray,
+    img_width: int,
+    color: np.ndarray,
+    fade: float
+) -> float:
+    n_pixels = len(pixels)
+    if n_pixels == 0:
+        return np.inf
+
+    total_diff = 0.0
+
+    for k in range(n_pixels):
+        px = pixels[k, 0]
+        py = pixels[k, 1]
+        idx = (px + py * img_width) * 4
+        
+        if idx < 0 or idx + 3 >= len(current_buffer):
+            continue
+
+        pixel_diff = 0.0
+        for c in range(4):
+            curr = current_buffer[idx + c]
+            targ = target_buffer[idx + c]
+            new_c = color[c] * fade + curr * (1.0 - fade)
+            
+            diff = abs(targ - new_c) - abs(curr - targ)
+            pixel_diff += diff
+            
+        if pixel_diff < 0:
+            total_diff += pixel_diff
+        else:
+            total_diff += pixel_diff / 5.0
+            
+    avg = total_diff / n_pixels
+    return avg ** 3
+
+
+@njit(fastmath=True)
+def _apply_line_jit(
+    pixels: np.ndarray,
+    current_buffer: np.ndarray,
+    img_width: int,
+    color: np.ndarray,
+    fade: float
+):
+    n_pixels = len(pixels)
+    for k in range(n_pixels):
+        px = pixels[k, 0]
+        py = pixels[k, 1]
+        idx = (px + py * img_width) * 4
+        
+        if idx < 0 or idx + 3 >= len(current_buffer):
+            continue
+            
+        for c in range(4):
+            curr = current_buffer[idx + c]
+            new_c = color[c] * fade + curr * (1.0 - fade)
+            current_buffer[idx + c] = new_c
+
 
 
 class Thread:
@@ -118,23 +183,7 @@ class Thread:
         assert self._next_pixels is not None
 
         # Alpha-blend each pixel on the line into the current buffer
-        pixels = self._next_pixels
-        
-        px = pixels[:, 0].astype(np.int32)
-        py = pixels[:, 1].astype(np.int32)
-        base_idx = (px + py * img_width) * 4
-        
-        valid_pixel_mask = (base_idx >= 0) & (base_idx + 3 < len(current_buffer))
-        base_idx = base_idx[valid_pixel_mask]
-        
-        if len(base_idx) > 0:
-            c_offsets = np.arange(4)
-            indices = base_idx[:, None] + c_offsets  # shape (M, 4)
-            curr_vals = current_buffer[indices]
-            
-            # Blend
-            new_c = self.color * self.fade + curr_vals * (1 - self.fade)
-            current_buffer[indices] = new_c
+        _apply_line_jit(self._next_pixels, current_buffer, img_width, self.color, self.fade)
 
         # Record the connection
         key = (min(self.current_nail, self._next_nail), max(self.current_nail, self._next_nail))
@@ -161,48 +210,4 @@ class Thread:
         target_buffer: np.ndarray,
         img_width: int,
     ) -> float:
-        """
-        Compute how much drawing this line would change the error between
-        the current canvas and the target image.
-
-        Direct port of JS ``Line.get_line_diff``:
-        - For each pixel on the line, compute the new blended value
-        - Measure the change in absolute error vs target
-        - Negative diffs (improvements) weighted 1×, positive (regressions) 1/5×
-        - Result = (mean_weighted_diff)^3
-        """
-        if len(pixels) == 0:
-            return float("inf")
-
-        px = pixels[:, 0].astype(np.int32)
-        py = pixels[:, 1].astype(np.int32)
-        base_idx = (px + py * img_width) * 4
-        
-        valid_pixel_mask = (base_idx >= 0) & (base_idx + 3 < len(current_buffer))
-        base_idx = base_idx[valid_pixel_mask]
-        
-        if len(base_idx) == 0:
-            return float("inf")
-            
-        c_offsets = np.arange(4)
-        indices = base_idx[:, None] + c_offsets # shape (M, 4)
-        
-        curr_vals = current_buffer[indices]
-        targ_vals = target_buffer[indices]
-        
-        new_c = self.color * self.fade + curr_vals * (1 - self.fade)
-        
-        # Absolute differences
-        diff = np.abs(targ_vals - new_c) - np.abs(curr_vals - targ_vals)
-        
-        # Sum over RGBA channels
-        pixel_diff = diff.sum(axis=1)
-        
-        # Asymmetric weighting
-        improvements = pixel_diff[pixel_diff < 0]
-        regressions = pixel_diff[pixel_diff >= 0]
-        
-        total_diff = improvements.sum() + (regressions.sum() / 5.0)
-        
-        avg = total_diff / len(base_idx)
-        return float(avg ** 3)
+        return _compute_line_diff_jit(pixels, current_buffer, target_buffer, img_width, self.color, self.fade)

@@ -267,8 +267,8 @@ async function generate_from_backend(file) {
         let data = await response.json();
         current_job_id = data.job_id;
         
-        // Start polling
-        pollInterval = setInterval(poll_job_status, 1000);
+        // Start polling much faster for smooth streaming (e.g., 200ms)
+        pollInterval = setInterval(poll_job_status, 200);
     } catch (e) {
         console.error(e);
         GUI.regenerate.element.innerHTML = "<b>Error: " + e.message + "</b>";
@@ -278,6 +278,12 @@ async function generate_from_backend(file) {
 async function poll_job_status() {
     try {
         let response = await fetch(`http://localhost:8000/api/jobs/${current_job_id}`);
+        if (!response.ok) {
+            clearInterval(pollInterval);
+            GUI.regenerate.element.innerHTML = "<b>Job Not Found (Refresh page)</b>";
+            console.error("Job not found, server probably restarted.");
+            return;
+        }
         let data = await response.json();
         
         // Setup nails if this is the first time we see them
@@ -311,7 +317,9 @@ async function poll_job_status() {
             console.error("Job failed:", data.error);
         }
     } catch (e) {
+        clearInterval(pollInterval);
         console.error("Polling error", e);
+        GUI.regenerate.element.innerHTML = "<b>Connection Error</b>";
     }
 }
 
@@ -351,8 +359,9 @@ function drain_pending_steps(nail_pos) {
             return;
         }
         
-        // Draw up to 50 lines per frame to keep it snappy but visible
-        let batch_size = 50; 
+        // Dynamically adjust batch size to drain smoothly over ~10 frames, but always draw at least 1 line
+        let batch_size = Math.max(1, Math.ceil(pending_steps.length / 10));
+        
         for(let b=0; b < batch_size && pending_steps.length > 0; b++) {
             let step = pending_steps.shift();
             let start = nail_pos[step.from_nail];

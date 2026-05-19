@@ -216,10 +216,12 @@ def run_generation(
         ]
 
         # ── 4. Initialize threads ────────────────────────────────────
-        fade = 1.0 / (downscale * 1.8)
+        # A very small fade ensures the algorithm draws many overlapping lines 
+        # to achieve darkness, resulting in a dense, highly detailed string art.
+        fade = 0.05
         threads = [
-            Thread(start_nail=0, color=c, fade=fade)
-            for c in DEFAULT_THREAD_COLORS
+            Thread(start_nail=0, color=color, fade=fade)
+            for color in DEFAULT_THREAD_COLORS
         ]
 
         # ── 5. Main greedy loop ──────────────────────────────────────
