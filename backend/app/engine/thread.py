@@ -136,20 +136,21 @@ class Thread:
                 continue
 
             # Skip already-used connections
-            key = (min(self.current_nail, i), max(self.current_nail, i))
+            key = (self.current_nail, i)
             if key in self.prev_connections:
                 continue
 
             # Get or compute pixels for this line
-            if key in line_cache:
-                pixels = line_cache[key]
+            line_key = (min(self.current_nail, i), max(self.current_nail, i))
+            if line_key in line_cache:
+                pixels = line_cache[line_key]
             else:
                 dst = nail_positions_px[i]
                 pixels = bresenham_line(
                     int(src[0]), int(src[1]),
                     int(dst[0]), int(dst[1]),
                 )
-                line_cache[key] = pixels
+                line_cache[line_key] = pixels
 
             score = self._compute_line_diff(pixels, current_buffer, target_buffer, img_width)
 
@@ -185,8 +186,8 @@ class Thread:
         # Alpha-blend each pixel on the line into the current buffer
         _apply_line_jit(self._next_pixels, current_buffer, img_width, self.color, self.fade)
 
-        # Record the connection
-        key = (min(self.current_nail, self._next_nail), max(self.current_nail, self._next_nail))
+        # Record the connection (directed, matching JS so it can bounce back if needed)
+        key = (self.current_nail, self._next_nail)
         self.prev_connections.add(key)
 
         from_nail = self.current_nail

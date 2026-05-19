@@ -41,11 +41,7 @@ logger = logging.getLogger(__name__)
 #   White   = (255, 255, 255, 255)
 
 DEFAULT_THREAD_COLORS: list[tuple[int, int, int, int]] = [
-    (0, 255, 255, 255),    # Cyan
-    (255, 0, 255, 255),    # Magenta
-    (255, 255, 0, 255),    # Yellow
     (0, 0, 0, 255),        # Black
-    (255, 255, 255, 255),  # White
 ]
 
 
@@ -87,7 +83,8 @@ def _preprocess_image(
     Port of the JS ``img.onload`` handler that computes canvas dimensions
     from the frame bounding box and downscale factor.
     """
-    img = Image.open(BytesIO(image_bytes)).convert("RGBA")
+    # Convert to grayscale first, then to RGBA so it has 4 channels but is visually monochrome
+    img = Image.open(BytesIO(image_bytes)).convert("L").convert("RGBA")
 
     # Working resolution
     canvas_w = max(1, target_width // downscale)
@@ -216,9 +213,7 @@ def run_generation(
         ]
 
         # ── 4. Initialize threads ────────────────────────────────────
-        # A very small fade ensures the algorithm draws many overlapping lines 
-        # to achieve darkness, resulting in a dense, highly detailed string art.
-        fade = 0.05
+        fade = 1.0 / (downscale * 1.8)
         threads = [
             Thread(start_nail=0, color=color, fade=fade)
             for color in DEFAULT_THREAD_COLORS
@@ -266,11 +261,9 @@ def run_generation(
 
             # Update progress
             job.progress = (iteration + 1) / max_iter
-
-            # Invalidate all other threads' caches since the buffer changed
-            for t_idx, thread in enumerate(threads):
-                if t_idx != best_thread_idx:
-                    thread._cache_valid = False
+            
+            # Intentionally NOT invalidating caches for losing threads 
+            # to match the original JS engine's delayed evaluation bug!
 
         # ── 6. Assemble response ─────────────────────────────────────
         result = GenerateResponse(
